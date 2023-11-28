@@ -73,7 +73,7 @@ def check_collision(catcher, balls, effect_group):
         elif ball.y > 800:  # 화면 아래로 벗어난 경우
             balls.remove(ball)
 
-def main():
+def play():
     pygame.init()
 
     # 화면 설정
@@ -90,11 +90,41 @@ def main():
 
     # 몇 번째 공이 떨어져야 하는지에 대한 변수
     balls = []
+
+    note_position = []
+
+    note_bit = []
     #이펙트 그룹 생성
     effect_group = pygame.sprite.Group()
 
-    
+    #여기서부터는 노트정보를 저장한 텍스트파일을 불러와서 배열로 저장하는 부분
+    f = open('note.txt', "r")
 
+    data = f.read().splitlines()
+
+    note_data = []
+    
+    for note in data:
+        note_data.append(note.split(','))
+    print(note_data)
+
+    for sublist in note_data:
+        note_bit.append(sublist[0])
+        note_position.append(sublist[1:])
+
+    print("note_bit:", note_bit)
+    print("note_position:", note_position)
+
+    #노트가 나올 순서 변수
+    note_turn = 0
+
+    note_bit_turn = 0
+
+    #비트가 바뀌는 순서 변수
+    bit_turn = 0
+
+    bpm = 100
+    
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -114,16 +144,34 @@ def main():
         if event.type == pygame.KEYUP:
             if event.key == pygame.K_SPACE:
                 image_load.reset_speed()
-        
-        position = random.randint(80, 1420)
+
+        position = 0
+
+        #노트 포지션에 따라 공이 알맞은 위치로 내려올 수 있도록 설정
+        if note_position[note_bit_turn][note_turn] == '1':
+            position = 125
+        elif note_position[note_bit_turn][note_turn] == '2':
+            position = 375
+        elif note_position[note_bit_turn][note_turn] == '3':
+            position = 625
+        elif note_position[note_bit_turn][note_turn] == '4':
+            position = 875
+        elif note_position[note_bit_turn][note_turn] == '5':
+            position = 1125
+        elif note_position[note_bit_turn][note_turn] == '6':
+            position = 1375
 
         # 화면 업데이트
         screen.fill((0, 0, 0))  # 배경은 검은색으로
         screen.blit(image_load.image, (image_load.x, image_load.y))
 
-        # 3초마다 원을 생성
-        if timer % 180 == 0:
+        # 비트에 따라 공이 내려오는 빈도수 조정
+        if timer % (60 * int(note_bit[note_bit_turn])) / (int(note_bit[note_bit_turn]) / 4 * bpm) == 0:
             balls.append(Ball(position))
+            note_turn += 1
+            if note_turn >= len(note_position[note_bit_turn]):
+                note_turn = 0
+                note_bit_turn += 1
 
         # 실시간으로 공의 갯수를 세고 공의 갯수만큼 공이 떨어지도록 만듬
         if len(balls) > 0:
@@ -139,11 +187,11 @@ def main():
         effect_group.update()
 
         pygame.display.flip()
-        clock.tick(60)  # 초당 60프레임으로 설정
+        clock.tick(100)  # 초당 60프레임으로 설정
         timer += 1
 
 if __name__ == "__main__":
-    main()
+    play()
 
 
 

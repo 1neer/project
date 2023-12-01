@@ -73,6 +73,7 @@ def check_collision(catcher, balls, effect_group):
         elif ball.y > 800:  # 화면 아래로 벗어난 경우
             balls.remove(ball)
 
+
 def play():
     pygame.init()
 
@@ -93,7 +94,9 @@ def play():
 
     note_position = []
 
+    #비트 저장
     note_bit = []
+
     #이펙트 그룹 생성
     effect_group = pygame.sprite.Group()
 
@@ -117,13 +120,14 @@ def play():
 
     #노트가 나올 순서 변수
     note_turn = 0
-
+    
     note_bit_turn = 0
 
     #비트가 바뀌는 순서 변수
     bit_turn = 0
 
     bpm = 100
+
     
     while True:
         for event in pygame.event.get():
@@ -166,7 +170,10 @@ def play():
         screen.blit(image_load.image, (image_load.x, image_load.y))
 
         # 비트에 따라 공이 내려오는 빈도수 조정
-        if timer % (60 * int(note_bit[note_bit_turn])) / (int(note_bit[note_bit_turn]) / 4 * bpm) == 0:
+
+        beats_per_measure = int(note_bit[note_bit_turn])
+
+        if timer % int(60 / beats_per_measure) == 0:
             balls.append(Ball(position))
             note_turn += 1
             if note_turn >= len(note_position[note_bit_turn]):
@@ -187,7 +194,7 @@ def play():
         effect_group.update()
 
         pygame.display.flip()
-        clock.tick(100)  # 초당 60프레임으로 설정
+        clock.tick(60)  # 초당 60프레임으로 설정
         timer += 1
 
 if __name__ == "__main__":

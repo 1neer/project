@@ -2,6 +2,7 @@ import pygame
 import sys
 import random
 import math
+import time
 
 class Catcher:
     def __init__(self, imagefile):
@@ -23,7 +24,7 @@ class Catcher:
             self.x = 1300
     
     def power_move(self):
-        self.speed = 50
+        self.speed = 30
 
     def reset_speed(self):
         self.speed = 10
@@ -33,12 +34,14 @@ class Ball:
         self.radius = 40
         self.color = (255, 255, 255)
         self.x = x
-        self.y = 0
+        self.y = -100
         self.speed = 10
+        self.note_time = time.time() + 1
 
-    def move(self):
-        self.y += self.speed
-
+    def move(self, Time):
+        #self.y += self.speed
+        self.time = Time
+        self.y = 600 + (self.time - self.note_time) * 600
     def create_ball(self, main_screen):
         pygame.draw.circle(main_screen, self.color, (self.x, self.y), self.radius)
 
@@ -60,7 +63,7 @@ class Effect(pygame.sprite.Sprite):
         if self.speed <= 0:
             self.kill()
 
-def check_collision(catcher, balls, effect_group):
+def check_collision(catcher, balls, effect_group, sound):
     catcher_rect = pygame.Rect(catcher.x, catcher.y, catcher.rect.width, catcher.rect.height)
     for ball in balls:
         ball_rect = pygame.Rect(ball.x - ball.radius, ball.y - ball.radius, 2 * ball.radius, 2 * ball.radius)
@@ -69,6 +72,7 @@ def check_collision(catcher, balls, effect_group):
             for _ in range(10):
                 effect = Effect(ball_rect.center)
                 effect_group.add(effect)
+            sound.play()
             balls.remove(ball)
         elif ball.y > 800:  # 화면 아래로 벗어난 경우
             balls.remove(ball)
@@ -126,8 +130,17 @@ def play():
     #비트가 바뀌는 순서 변수
     bit_turn = 0
 
-    bpm = 100
+    bpm = 165
 
+    start_time = time.time()
+    
+    music_phoenix = pygame.mixer.Sound( "Phoenix.mp3" )
+    music_phoenix.play()
+    clap = pygame.mixer.Sound("drum-hitclap.ogg")
+
+    #노트생성을 1초전에 해서 1초후에 노래에알맞게 내려오게 해주는 변수
+    a = 0.39
+    second = 0
     
     while True:
         for event in pygame.event.get():
@@ -150,7 +163,6 @@ def play():
                 image_load.reset_speed()
 
         position = 0
-
         #노트 포지션에 따라 공이 알맞은 위치로 내려올 수 있도록 설정
         if note_position[note_bit_turn][note_turn] == '1':
             position = 125
@@ -170,24 +182,40 @@ def play():
         screen.blit(image_load.image, (image_load.x, image_load.y))
 
         # 비트에 따라 공이 내려오는 빈도수 조정
-
+        # 한 마디당 시간 계산 (1/32박자 기준)
         beats_per_measure = int(note_bit[note_bit_turn])
+        carculate_beat = beats_per_measure / 4
+        spb = 60 / (carculate_beat * bpm)
 
-        if timer % int(60 / beats_per_measure) == 0:
-            balls.append(Ball(position))
+        time_interval = spb
+        
+        elapsed_time = time.time() - start_time
+        # 한 마디당 비트 수
+        beats_per_bar = int(note_bit[note_bit_turn])
+        # 한 마디당 시간
+        spb_bar = 60 * beats_per_bar * spb
+
+        note_Time = time.time()
+        
+        #if timer % int(time_interval * 60) == 1:
+        if elapsed_time >= time_interval - a:
+            if note_position[note_bit_turn][note_turn] != '0' :
+                balls.append(Ball(position))
             note_turn += 1
             if note_turn >= len(note_position[note_bit_turn]):
                 note_turn = 0
                 note_bit_turn += 1
-
+            start_time = time.time()
+            #a를 0으로 해주어서 다음 노트는 정상적인 간격으로 내려올 수 있도록 만듬
+            a = 0
         # 실시간으로 공의 갯수를 세고 공의 갯수만큼 공이 떨어지도록 만듬
         if len(balls) > 0:
             for i in balls:
                 i.create_ball(screen)
-                i.move()
+                i.move(note_Time)
 
         # 충돌 확인
-        check_collision(image_load, balls, effect_group)
+        check_collision(image_load, balls, effect_group, clap)
 
         #이펙트를 화면에 나타내고 업데이트 함
         effect_group.draw(screen)
@@ -196,6 +224,14 @@ def play():
         pygame.display.flip()
         clock.tick(60)  # 초당 60프레임으로 설정
         timer += 1
+        if timer % 60 == 0:
+            second += 1
+        print(second)
+
+        if second >= 88:
+            music_phoenix.fadeout(3000)
+        if second >= 92:
+            pygame.quit()
 
 if __name__ == "__main__":
     play()

@@ -3,6 +3,43 @@ import sys
 import random
 import math
 import time
+class SongSelection:
+    def __init__(self, screen, song_data, selected_song_index):
+        self.screen = screen
+        self.font = pygame.font.Font("1.ttf", 36)
+        self.song_data = song_data
+        self.index = selected_song_index  # 현재 선택된 곡의 인덱스
+        self.start_button = pygame.Rect(600, 400, 200, 50)
+        self.start_text = self.font.render("Start", True, (0, 0, 0))
+        self.update_texts()
+
+    def update_texts(self):
+        song = self.song_data[self.index]
+        print(song)
+        composer_text = self.font.render("작곡가:" + song["composer"], True, (255, 255, 255))
+        bpm_text = self.font.render("BPM:" + str(song["bpm"]), True, (255, 255, 255))
+        difficulty_text = self.font.render("난이도:" + str(song["difficulty"]), True, (255, 255, 255))
+        background_image = pygame.image.load(song["bg"]).convert_alpha()
+        background_image = pygame.transform.scale(background_image, (400, 200))
+
+        self.texts = [composer_text, bpm_text, difficulty_text]
+        self.background_image = background_image
+
+    def draw(self):
+        for i, text in enumerate(self.texts):
+            self.screen.blit(text, (1000, 150 + i * 50))
+        self.screen.blit(self.background_image, (1000, 300))
+
+        # Draw Start Button
+        pygame.draw.rect(self.screen, (0, 255, 0), self.start_button)
+        self.screen.blit(self.start_text, (650, 415))
+
+    def handle_event(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            x, y = event.pos
+            if self.start_button.collidepoint(x, y):
+                return True
+        return False
 
 class Catcher:
     def __init__(self, imagefile):
@@ -36,6 +73,7 @@ class Ball:
         self.x = x
         self.y = -100
         self.speed = 10
+        #노트가 타이밍 1초전에 생성됨
         self.note_time = time.time() + 1
 
     def move(self, Time):
@@ -45,7 +83,6 @@ class Ball:
     def create_ball(self, main_screen):
         pygame.draw.circle(main_screen, self.color, (self.x, self.y), self.radius)
 
-#스프라이트를 이용해 공이 플레이어에 닿았을 때 사라지며 이펙트가 나타나게 함.
 class Effect(pygame.sprite.Sprite):
     def __init__(self, position):
         super().__init__()
@@ -77,11 +114,10 @@ def check_collision(catcher, balls, effect_group, sound):
         elif ball.y > 800:  # 화면 아래로 벗어난 경우
             balls.remove(ball)
 
-
-def play():
+def play(b, l, t, p):
     pygame.init()
 
-    # 화면 설정
+    #화면 설정
     width, height = 1500, 800
     screen = pygame.display.set_mode((width, height))
     pygame.display.set_caption("비트 캐쳐!")
@@ -90,56 +126,53 @@ def play():
 
     image_load = Catcher("catcher.png")
 
-    # 공이 떨어지고 딜레이를 주기 위한 변수
     timer = 0
-
     # 몇 번째 공이 떨어져야 하는지에 대한 변수
     balls = []
-
+    #노트 패턴을 저장하는 배열
     note_position = []
-
     #비트 저장
     note_bit = []
-
     #이펙트 그룹 생성
     effect_group = pygame.sprite.Group()
 
     #여기서부터는 노트정보를 저장한 텍스트파일을 불러와서 배열로 저장하는 부분
-    f = open('note.txt', "r")
-
+    f = open(p, "r")
     data = f.read().splitlines()
-
     note_data = []
     
     for note in data:
         note_data.append(note.split(','))
-    print(note_data)
 
     for sublist in note_data:
         note_bit.append(sublist[0])
         note_position.append(sublist[1:])
-
-    print("note_bit:", note_bit)
-    print("note_position:", note_position)
+    
+    f.close()
 
     #노트가 나올 순서 변수
     note_turn = 0
-    
-    note_bit_turn = 0
 
     #비트가 바뀌는 순서 변수
-    bit_turn = 0
-
-    bpm = 165
-
-    start_time = time.time()
+    note_bit_turn = 0
     
-    music_phoenix = pygame.mixer.Sound( "Phoenix.mp3" )
-    music_phoenix.play()
-    clap = pygame.mixer.Sound("drum-hitclap.ogg")
+    #bpm
+    bpm = b
 
-    #노트생성을 1초전에 해서 1초후에 노래에알맞게 내려오게 해주는 변수
-    a = 0.39
+    #곡이 시작한 시간 저장
+    start_time = time.time()
+
+    #곡 플레이
+    music_phoenix = pygame.mixer.Sound(t)
+    music_phoenix.play()
+    
+    #효과음 저장
+    clap = pygame.mixer.Sound("drum-hitclap.ogg")
+    
+    #곡이 시작되고 음이 나오기 전까지 공백, 측정은 오데시티라는 프로그램 활용
+    a = l
+    
+    #곡이 끝나는 타이밍 재기위한 변수
     second = 0
     
     while True:
@@ -148,22 +181,18 @@ def play():
                 pygame.quit()
                 sys.exit()
 
-        # 키 입력 처리
         keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT]:
             image_load.move_left()
         if keys[pygame.K_RIGHT]:
             image_load.move_right()
-        # 스페이스바 누르면 속도가 빨라짐. 함수정보는 Catcher 클래스에 있음
         if keys[pygame.K_SPACE]:
             image_load.power_move()
-        # 스페이스바 뗄 시 속도가 원래대로 돌아옴
         if event.type == pygame.KEYUP:
             if event.key == pygame.K_SPACE:
                 image_load.reset_speed()
 
         position = 0
-        #노트 포지션에 따라 공이 알맞은 위치로 내려올 수 있도록 설정
         if note_position[note_bit_turn][note_turn] == '1':
             position = 125
         elif note_position[note_bit_turn][note_turn] == '2':
@@ -177,52 +206,41 @@ def play():
         elif note_position[note_bit_turn][note_turn] == '6':
             position = 1375
 
-        # 화면 업데이트
-        screen.fill((0, 0, 0))  # 배경은 검은색으로
+        screen.fill((0, 0, 0))
         screen.blit(image_load.image, (image_load.x, image_load.y))
 
-        # 비트에 따라 공이 내려오는 빈도수 조정
-        # 한 마디당 시간 계산 (1/32박자 기준)
         beats_per_measure = int(note_bit[note_bit_turn])
         carculate_beat = beats_per_measure / 4
         spb = 60 / (carculate_beat * bpm)
 
         time_interval = spb
-        
         elapsed_time = time.time() - start_time
-        # 한 마디당 비트 수
         beats_per_bar = int(note_bit[note_bit_turn])
-        # 한 마디당 시간
         spb_bar = 60 * beats_per_bar * spb
-
         note_Time = time.time()
-        
-        #if timer % int(time_interval * 60) == 1:
+
         if elapsed_time >= time_interval - a:
-            if note_position[note_bit_turn][note_turn] != '0' :
+            if note_position[note_bit_turn][note_turn] != '0':
                 balls.append(Ball(position))
             note_turn += 1
             if note_turn >= len(note_position[note_bit_turn]):
                 note_turn = 0
                 note_bit_turn += 1
             start_time = time.time()
-            #a를 0으로 해주어서 다음 노트는 정상적인 간격으로 내려올 수 있도록 만듬
             a = 0
-        # 실시간으로 공의 갯수를 세고 공의 갯수만큼 공이 떨어지도록 만듬
+
         if len(balls) > 0:
             for i in balls:
                 i.create_ball(screen)
                 i.move(note_Time)
 
-        # 충돌 확인
         check_collision(image_load, balls, effect_group, clap)
 
-        #이펙트를 화면에 나타내고 업데이트 함
         effect_group.draw(screen)
         effect_group.update()
 
         pygame.display.flip()
-        clock.tick(60)  # 초당 60프레임으로 설정
+        clock.tick(60)
         timer += 1
         if timer % 60 == 0:
             second += 1
@@ -233,9 +251,77 @@ def play():
         if second >= 92:
             pygame.quit()
 
+
+def main():
+    pygame.init()
+    width, height = 1500, 800
+    pygame.display.set_caption("비트 캐쳐!")
+    clock = pygame.time.Clock()
+
+    font = pygame.font.Font("1.ttf",60)
+    song_data = [
+        {"title": "Phoenix", "composer": "Netrum & Halvorsen", "bpm": 165, "difficulty": 2, "bg": "Phoenix.jpg", "late" : 0.381, "pattern" : "note.txt"},
+        {"title": "enchanted love", "composer": "linear ring", "bpm": 95, "difficulty": 3, "bg": "enchanted love.png"},
+        # 추가 곡 정보를 필요한 만큼 추가
+    ]
+    
+    while True:
+        screen = pygame.display.set_mode((width, height))
+        song_name_texts = [font.render(f"곡: {song['title']}", True, (255, 255, 255)) for song in song_data]
+        song_name_rects = [text.get_rect(center=(300, 100 + i * 140)) for i, text in enumerate(song_name_texts)]
+        for i in range(0, len(song_name_texts)):
+            screen.blit(song_name_texts[i], song_name_rects[i])
+    
+        pygame.display.flip()
+
+        song_selection = None
+        waiting_for_click = True
+        print("a")
+        while waiting_for_click:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    x, y = event.pos
+                    for i, rect in enumerate(song_name_rects):
+                        if rect.collidepoint(x, y):
+                            selected_song = i
+                            waiting_for_click = False
+
+        if selected_song is not None:
+            song_selection = SongSelection(screen, song_data, selected_song)
+            song_selection.draw()
+    
+            pygame.display.flip()
+
+            start_button_clicked = False
+            selected_song_button = False
+            while not start_button_clicked and not selected_song_button:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        pygame.quit()
+                        sys.exit()
+                    elif event.type == pygame.MOUSEBUTTONDOWN:
+                        x, y = event.pos
+                        for i, rect in enumerate(song_name_rects):
+                            if rect.collidepoint(x, y):
+                                selected_song_button = True
+                    start_button_clicked = song_selection.handle_event(event)
+
+            pygame.display.flip()
+            clock.tick(60)
+        if start_button_clicked == True:
+            break
+    song = song_selection.song_data[song_selection.index]
+    bpm = song["bpm"]
+    late = song["late"]
+    title = song["title"] + ".mp3"
+    pattern = song["pattern"]
+    bg = song["bg"]
+    print(str(bpm) + str(late) + title + pattern + bg)             
+    play(bpm, late, title, pattern)
+
 if __name__ == "__main__":
-    play()
-
-
-
+    main()
 

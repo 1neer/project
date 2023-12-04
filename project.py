@@ -114,7 +114,7 @@ def check_collision(catcher, balls, effect_group, sound):
         elif ball.y > 800:  # 화면 아래로 벗어난 경우
             balls.remove(ball)
 
-def play(b, l, t, p):
+def play(b, l, t, p, s):
     pygame.init()
 
     #화면 설정
@@ -163,18 +163,17 @@ def play(b, l, t, p):
     start_time = time.time()
 
     #곡 플레이
-    music_phoenix = pygame.mixer.Sound(t)
-    music_phoenix.play()
-    
+    music = pygame.mixer.Sound(t)
+
     #효과음 저장
     clap = pygame.mixer.Sound("drum-hitclap.ogg")
     
     #곡이 시작되고 음이 나오기 전까지 공백, 측정은 오데시티라는 프로그램 활용
     a = l
-    
     #곡이 끝나는 타이밍 재기위한 변수
     second = 0
     
+    event = pygame.event.Event(pygame.KEYUP, {'key': None})
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -216,10 +215,10 @@ def play(b, l, t, p):
         time_interval = spb
         elapsed_time = time.time() - start_time
         beats_per_bar = int(note_bit[note_bit_turn])
-        spb_bar = 60 * beats_per_bar * spb
+        #spb_bar = 60 * beats_per_bar * spb
         note_Time = time.time()
 
-        if elapsed_time >= time_interval - a:
+        if elapsed_time >= time_interval:
             if note_position[note_bit_turn][note_turn] != '0':
                 balls.append(Ball(position))
             note_turn += 1
@@ -228,7 +227,6 @@ def play(b, l, t, p):
                 note_bit_turn += 1
             start_time = time.time()
             a = 0
-
         if len(balls) > 0:
             for i in balls:
                 i.create_ball(screen)
@@ -244,12 +242,15 @@ def play(b, l, t, p):
         timer += 1
         if timer % 60 == 0:
             second += 1
-        print(second)
-
-        if second >= 88:
-            music_phoenix.fadeout(3000)
-        if second >= 92:
+        
+        if timer == 60:
+            music.play()
+            print(second)
+        if second >= s:
+            music.fadeout(3000)
+        if second >= s + 4:
             pygame.quit()
+            sys.exit()
 
 
 def main():
@@ -260,8 +261,8 @@ def main():
 
     font = pygame.font.Font("1.ttf",60)
     song_data = [
-        {"title": "Phoenix", "composer": "Netrum & Halvorsen", "bpm": 165, "difficulty": 2, "bg": "Phoenix.jpg", "late" : 0.381, "pattern" : "note.txt"},
-        {"title": "enchanted love", "composer": "linear ring", "bpm": 95, "difficulty": 3, "bg": "enchanted love.png"},
+        {"title": "Phoenix", "composer": "Netrum & Halvorsen", "bpm": 165, "difficulty": 2, "bg": "Phoenix.jpg", "late" : 0.381, "pattern" : "Phoenix.txt", "seconds" : 88, "music" : "Phoenix.mp3"},
+        {"title": "enchanted love", "composer": "linear ring", "bpm": 95, "difficulty": 3, "bg": "enchanted love.png", "late" : 0.180, "pattern" : "enchanted love.txt", "seconds" : 130, "music" : "enchanted love.ogg"},
         # 추가 곡 정보를 필요한 만큼 추가
     ]
     
@@ -316,11 +317,12 @@ def main():
     song = song_selection.song_data[song_selection.index]
     bpm = song["bpm"]
     late = song["late"]
-    title = song["title"] + ".mp3"
+    title = song["music"]
     pattern = song["pattern"]
     bg = song["bg"]
+    second = song["seconds"]
     print(str(bpm) + str(late) + title + pattern + bg)             
-    play(bpm, late, title, pattern)
+    play(bpm, late, title, pattern, second)
 
 if __name__ == "__main__":
     main()

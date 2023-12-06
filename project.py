@@ -100,7 +100,7 @@ class Effect(pygame.sprite.Sprite):
         if self.speed <= 0:
             self.kill()
 
-def check_collision(catcher, balls, effect_group, sound):
+def check_collision(catcher, balls, effect_group, sound, com, cur):
     catcher_rect = pygame.Rect(catcher.x, catcher.y, catcher.rect.width, catcher.rect.height)
     for ball in balls:
         ball_rect = pygame.Rect(ball.x - ball.radius, ball.y - ball.radius, 2 * ball.radius, 2 * ball.radius)
@@ -110,9 +110,19 @@ def check_collision(catcher, balls, effect_group, sound):
                 effect = Effect(ball_rect.center)
                 effect_group.add(effect)
             sound.play()
+            com += 1
+            cur += 3
+            if cur >= 100:
+                cur = 100
             balls.remove(ball)
         elif ball.y > 800:  # 화면 아래로 벗어난 경우
             balls.remove(ball)
+            com = 0
+            cur -= 30
+            if cur <= 0:
+                cur = 0
+    return com,cur
+        
 
 def play(b, l, t, p, s):
     pygame.init()
@@ -136,8 +146,17 @@ def play(b, l, t, p, s):
     #이펙트 그룹 생성
     effect_group = pygame.sprite.Group()
 
+    combo = 0
+
+    max_combo = 0
+
+    curhp = 100
+
+    font = pygame.font.Font("1.ttf", 36)
+
     #여기서부터는 노트정보를 저장한 텍스트파일을 불러와서 배열로 저장하는 부분
-    f = open(p, "r")
+    pa = p
+    f = open(pa, "r")
     data = f.read().splitlines()
     note_data = []
     
@@ -162,8 +181,10 @@ def play(b, l, t, p, s):
     #곡이 시작한 시간 저장
     start_time = time.time()
 
+    song = t
+
     #곡 플레이
-    music = pygame.mixer.Sound(t)
+    music = pygame.mixer.Sound(song)
 
     #효과음 저장
     clap = pygame.mixer.Sound("drum-hitclap.ogg")
@@ -208,6 +229,12 @@ def play(b, l, t, p, s):
         screen.fill((0, 0, 0))
         screen.blit(image_load.image, (image_load.x, image_load.y))
 
+        combotext = font.render("X" + str(combo), True, (255, 255, 255))
+        screen.blit(combotext, (1300, 100))
+
+        hptext = font.render("100/" + str(curhp), True, (255, 255, 255))
+        screen.blit(hptext, (200, 100))
+
         beats_per_measure = int(note_bit[note_bit_turn])
         carculate_beat = beats_per_measure / 4
         spb = 60 / (carculate_beat * bpm)
@@ -232,7 +259,10 @@ def play(b, l, t, p, s):
                 i.create_ball(screen)
                 i.move(note_Time)
 
-        check_collision(image_load, balls, effect_group, clap)
+        combo, curhp = check_collision(image_load, balls, effect_group, clap, combo, curhp)
+
+        if combo >= max_combo:
+            max_combo = combo
 
         effect_group.draw(screen)
         effect_group.update()
@@ -240,17 +270,23 @@ def play(b, l, t, p, s):
         pygame.display.flip()
         clock.tick(60)
         timer += 1
+
+        se = s
+
+        if curhp <= 0:
+            music.stop()
+            gameover(max_combo, bpm, a, song, pa, se)
+
         if timer % 60 == 0:
             second += 1
         
         if timer == 60:
             music.play()
             print(second)
-        if second >= s:
+        if second >= se:
             music.fadeout(3000)
-        if second >= s + 4:
-            pygame.quit()
-            sys.exit()
+        if second >= se + 4:
+            clear(max_combo, bpm, a, song, pa, se)
 
 
 def main():
@@ -323,6 +359,99 @@ def main():
     second = song["seconds"]
     print(str(bpm) + str(late) + title + pattern + bg)             
     play(bpm, late, title, pattern, second)
+
+def gameover(max, b, l, t, p, s):
+    pygame.init()
+    width, height = 1500, 800
+    pygame.display.set_caption("비트 캐쳐!")
+    clock = pygame.time.Clock()
+
+    font1 = pygame.font.Font("1.ttf",100)
+    font2 = pygame.font.Font("1.ttf",40)
+
+    gameover_text = font1.render("GameOver!", True, (255, 255, 255))
+
+    re_button = pygame.Rect(600, 400, 200, 50)
+    re_text = font2.render("reStart", True, (0, 0, 0))
+
+    main_button = pygame.Rect(600, 600, 200, 50)
+    main_text = font2.render("main", True, (0, 0, 0))
+
+    while True:
+        screen = pygame.display.set_mode((width, height))
+        screen.blit(gameover_text, (450, 200))
+
+        pygame.draw.rect(screen, (0, 255, 0), re_button)
+        screen.blit(re_text, (615, 410))
+
+        pygame.draw.rect(screen, (0, 255, 0), main_button)
+        screen.blit(main_text, (615, 610))
+    
+        pygame.display.flip()
+        
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    x, y = event.pos
+                    if re_button.collidepoint(x, y):
+                        play(b, l, t, p, s)
+                        break
+                    elif main_button.collidepoint(x, y):
+                        main()
+                        break
+                pygame.display.flip()
+                clock.tick(60)
+
+def clear(max, b, l, t, p, s):
+    pygame.init()
+    width, height = 1500, 800
+    pygame.display.set_caption("비트 캐쳐!")
+    clock = pygame.time.Clock()
+
+    font1 = pygame.font.Font("1.ttf",100)
+    font2 = pygame.font.Font("1.ttf",40)
+
+    gameover_text = font1.render("Clear!", True, (255, 255, 255))
+
+    maxCombo_text = font1.render("Max combo : X" + str(max) + "!", True, (255, 255, 255))
+
+    re_button = pygame.Rect(600, 600, 200, 50)
+    re_text = font2.render("reStart", True, (0, 0, 0))
+
+    main_button = pygame.Rect(600, 700, 200, 50)
+    main_text = font2.render("main", True, (0, 0, 0))
+
+    while True:
+        screen = pygame.display.set_mode((width, height))
+        screen.blit(gameover_text, (450, 200))
+        screen.blit(maxCombo_text, (250, 400))
+
+        pygame.draw.rect(screen, (0, 255, 0), re_button)
+        screen.blit(re_text, (615, 610))
+
+        pygame.draw.rect(screen, (0, 255, 0), main_button)
+        screen.blit(main_text, (615, 710))
+    
+        pygame.display.flip()
+        
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    x, y = event.pos
+                    if re_button.collidepoint(x, y):
+                        play(b, l, t, p, s)
+                        break
+                    elif main_button.collidepoint(x, y):
+                        main()
+                        break
+                pygame.display.flip()
+                clock.tick(60)
 
 if __name__ == "__main__":
     main()
